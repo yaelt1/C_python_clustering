@@ -1,0 +1,7 @@
+kmeans.c
+kmeansmodule.c
+setup.py
+kmeans_capi.egg-info/PKG-INFO
+kmeans_capi.egg-info/SOURCES.txt
+kmeans_capi.egg-info/dependency_links.txt
+kmeans_capi.egg-info/top_level.txt
