@@ -40,15 +40,90 @@ void delete_vec(struct vector *head)
         free(head);
         head = next;
     }
-    free(head);
 }
 
-int file_err = 0;
 struct vector *head_vec;
 struct cord *head_cord;
 int dim = 0;
-double eps = 0.001;
+double eps = 0;
 
+int read_file()
+{
+    FILE *file;
+
+    // Open the file for reading
+    file = fopen("input_1.txt", "r");
+
+    if (file == NULL)
+    {
+        printf("Error opening the file.\n");
+        return 1;
+    }
+    struct vector *curr_vec;
+    struct cord *curr_cord;
+    int num = 0;
+    double n;
+    char c;
+
+    head_vec = malloc(sizeof(struct vector));
+    if (head_vec == NULL)
+    {
+        printf("An Error has Occurred\n");
+        exit(1);
+    }
+
+    head_cord = malloc(sizeof(struct cord));
+    if (head_cord == NULL)
+    {
+        printf("An Error has Occurred\n");
+        exit(1);
+    }
+    curr_cord = head_cord;
+    curr_cord->next = NULL;
+    curr_vec = head_vec;
+    curr_vec->next = NULL;
+
+    while (fscanf(file, "%lf%c", &n, &c) == 2)
+    {
+        if (c == '\n')
+        {
+            num++;
+            curr_cord->value = n;
+            curr_vec->cords = head_cord;
+            curr_vec->next = malloc(sizeof(struct vector));
+            if (curr_vec->next == NULL)
+            {
+                printf("An Error has Occurred\n");
+                exit(1);
+            }
+            curr_vec = curr_vec->next;
+            curr_vec->next = NULL;
+            head_cord = malloc(sizeof(struct cord));
+            if (head_cord == NULL)
+            {
+                printf("An Error has Occurred\n");
+                exit(1);
+            }
+            curr_cord = head_cord;
+            curr_cord->next = NULL;
+            continue;
+        }
+
+        curr_cord->value = n;
+        curr_cord->next = malloc(sizeof(struct cord));
+        if (curr_cord->next == NULL)
+        {
+            printf("An Error has Occurred\n");
+            exit(1);
+        }
+
+        curr_cord = curr_cord->next;
+        curr_cord->next = NULL;
+    }
+    delete_cord(curr_cord);
+    fclose(file);
+    return num;
+}
 struct vector create_zero_vec(int dim)
 {
     struct vector new_vec;
@@ -104,6 +179,8 @@ struct vector *read_points(int d, int len, double points[d][len])
 {
     struct vector *curr_vec;
     struct cord *curr_cord;
+    head_vec = NULL;
+    head_cord = NULL;
     int i;
     int j;
 
@@ -244,53 +321,15 @@ struct vector copy_vec(struct vector *vec)
     return new_vec;
 }
 
-// check
-void copy_init(struct vector *centroids, int vec_cords, double py_cent[][vec_cords], int K)
+void copy_cent(struct vector *centroid, struct vector *org_cent, int K)
 {
-    int i;
-    int j;
-    struct vector new_vec;
-    struct cord *new_cord;
-    struct cord *prev_copy_cord = NULL;
-    new_vec.cords = NULL;
-
-    centroids = malloc(K * sizeof(struct vector));
-    if (centroids == NULL)
+    int i = 0;
+    for (i; i < K; i++)
     {
-        printf("An Error has Occurred\n");
-        exit(1);
-    }
-    for (i = 0; i < K; i++)
-    {
-        new_cord = NULL;
-        prev_copy_cord = NULL;
-        for (j = 0; j < vec_cords; j++)
-        {
-            new_cord = malloc(sizeof(struct cord));
-            if (new_cord == NULL)
-            {
-                printf("An Error has Occurred\n");
-                exit(1);
-            }
-            new_cord->value = py_cent[i][j];
-            new_cord->next = NULL;
-            if (prev_copy_cord != NULL)
-            {
-                prev_copy_cord->next = new_cord;
-            }
-            else
-            {
-                new_vec.cords = new_cord;
-            }
-
-            prev_copy_cord = new_cord;
-        }
-
-        centroids[i] = new_vec;
+        centroid[i] = copy_vec(&org_cent[i]);
     }
 }
-
-struct vector *kmeans(int K, int iter, int vec_cords, int num_of_points, struct vector *init_cent, double points[][vec_cords])
+struct vector *kmeans(int K, int iter, int vec_cords, int epsilon, struct vector *init_cent)
 {
     double temp_dist;
     int a = 0;
@@ -300,8 +339,7 @@ struct vector *kmeans(int K, int iter, int vec_cords, int num_of_points, struct 
     int f = 0;
     int iter_err = 0;
     int K_err = 0;
-    int N = num_of_points;
-
+    int N;
     struct vector *centroids = NULL;
     int counter = 0;
     int *points_in_temp;
@@ -314,34 +352,16 @@ struct vector *kmeans(int K, int iter, int vec_cords, int num_of_points, struct 
     struct vector zero;
     int num_of_vec = 0;
     int cond = 1;
-    centroids = init_cent;
+    eps = epsilon;
     dim = vec_cords;
-
-    if (iter <= 1 || iter >= 1000)
-    {
-        iter_err = 1;
-        printf("%s", "Invalid maximum iteration!\n");
-    }
-
-    read_points(dim, num_of_points, points);
-
-    if (K <= 1 || K >= N)
-    {
-        K_err = 1;
-        printf("Invalid number of clusters!\n");
-    }
-
-    if (K_err || file_err || iter_err)
-    {
-        delete_vec(head_vec);
-        exit(1);
-    }
+    N = read_file();
+    centroids = malloc(K * sizeof(struct vector));
+    copy_cent(centroids, init_cent, K);
 
     temp_cent_arr = malloc(K * sizeof(struct vector));
     if (temp_cent_arr == NULL)
     {
         printf("An Error has Occurred\n");
-
         delete_vec(head_vec);
         exit(1);
     }
@@ -383,7 +403,6 @@ struct vector *kmeans(int K, int iter, int vec_cords, int num_of_points, struct 
         }
         counter++;
         cal_avg(temp_cent_arr, points_in_temp, K);
-
         d = 0;
         max_dist = INT_MIN;
         for (; d < K; d++)
@@ -412,19 +431,17 @@ struct vector *kmeans(int K, int iter, int vec_cords, int num_of_points, struct 
             break;
         }
     }
-    // print_cent(centroids, K);
-
+    print_cent(centroids, K);
     a = K - 1;
     for (; a >= 0; a--)
     {
-        // delete_cord(centroids[a].cords);
+        delete_cord(centroids[a].cords);
         delete_cord(temp_cent_arr[a].cords);
     }
-    // free(centroids);
+    free(centroids);
     free(points_in_temp);
     free(temp_cent_arr);
     delete_vec(head_vec);
-    return centroids;
 }
 
 // int main(int arvc, char *argv[])

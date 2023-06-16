@@ -16,54 +16,22 @@ struct vector
     struct vector *next;
     struct cord *cords;
 };
-
-void copy_init_mod(struct vector *centroids, int dim, PyObject *py_cent_obj, int K)
+void print_cent_mod(struct vector cent[], int K, int dim)
 {
-    int i;
-    int j;
-    struct vector new_vec;
-    struct cord *new_cord;
-    struct cord *prev_copy_cord = NULL;
-    new_vec.cords = NULL;
-    PyObject *row;
-    PyObject *value;
-
-    centroids = malloc(K * sizeof(struct vector));
-    if (centroids == NULL)
+    int i = 0;
+    struct cord *cur;
+    int range;
+    for (; i < K; i++)
     {
-        printf("An Error has Occurred\n");
-        exit(1);
-    }
-
-    for (i = 0; i < K; i++)
-    {
-        new_cord = NULL;
-        prev_copy_cord = NULL;
-        row = PyList_GetItem(py_cent_obj, i);
-        for (j = 0; j < dim; j++)
+        cur = cent[i].cords;
+        range = dim;
+        while (range > 1)
         {
-            new_cord = malloc(sizeof(struct cord));
-            if (new_cord == NULL)
-            {
-                printf("An Error has Occurred\n");
-                exit(1);
-            }
-            value = PyList_GetItem(row, j);
-            new_cord->value = PyFloat_AsDouble(value);
-            new_cord->next = NULL;
-            if (prev_copy_cord != NULL)
-            {
-                prev_copy_cord->next = new_cord;
-            }
-            else
-            {
-                new_vec.cords = new_cord;
-            }
-
-            prev_copy_cord = new_cord;
+            printf("%.4f,", cur->value);
+            cur = cur->next;
+            range--;
         }
-
-        centroids[i] = new_vec;
+        printf("%.4f\n", cur->value);
     }
 }
 
@@ -87,91 +55,136 @@ static PyObject *fit(PyObject *self, PyObject *args)
     PyObject *lst;
     PyObject *py_vec;
     PyObject *cord;
+    int a;
     int i;
     int j;
-    int a;
     int n = 0;
-    double points[n][d];
+    int eps;
     struct vector *centroids = NULL;
-    struct vector *final_cent;
-
-    if (!PyArg_ParseTuple(args, "iiiOO", &K, &iter, &d, &py_cent_obj, &lst))
-    {
-        return NULL;
-    }
-    int l = PyObject_Length(py_cent_obj);
-    if (l < 0)
+    struct vector *final_cent = NULL;
+    struct vector *new_vec = NULL;
+    struct cord *new_cord;
+    struct cord *prev_copy_cord = NULL;
+    if (!PyArg_ParseTuple(args, "iiiiOO", &K, &iter, &d, &eps, &py_cent_obj, &lst))
     {
         return NULL;
     }
 
+    if (PyObject_Length(py_cent_obj) < 0)
+    {
+        return NULL;
+    }
+
+    // // number of points
     n = PyObject_Length(lst);
     if (n < 0)
     {
         return NULL;
     }
 
-    copy_init_mod(centroids, d, py_cent_obj, K);
-    for (i = 0; i < n; i++)
+    centroids = malloc(K * sizeof(struct vector));
+    if (centroids == NULL)
     {
-        py_vec = PyList_GetItem(lst, i);
-        for (j = 0; j < d; j++)
-        {
-            cord = PyList_GetItem(py_vec, j);
-            points[i][j] = PyFloat_AsDouble(cord);
-        }
-    }
-
-    final_cent = kmeans(K, iter, d, n, centroids, points);
-
-    // create a python list
-    PyObject *python_list;
-    PyObject *python_vec;
-    PyObject *python_cord;
-    struct cord *cur_cord;
-    struct vector *vec;
-
-    python_list = PyList_New(K);
-
-    if (python_list == NULL)
-    {
-        // Error handling
-        delete_cord_mod(final_cent->cords);
-        free(final_cent);
+        printf("An Error has Occurred\n");
         return NULL;
     }
-
-    for (i = 0; i < K; ++i)
+    for (i = 0; i < K; i++)
     {
-        vec = &final_cent[i];
-        cur_cord = vec->cords;
-        python_vec = PyList_New(d);
-        if (python_vec == NULL)
+        PyObject *row = PyList_GetItem(py_cent_obj, i);
+        if (!PyList_Check(row))
         {
-            // Error handling
-            delete_cord_mod(final_cent->cords);
-            free(final_cent);
-            Py_DECREF(python_list);
+            // Handle error: the item is not a list
+        }
+        new_vec = malloc(sizeof(struct vector));
+        if (new_vec == NULL)
+        {
+            printf("An Error has Occurred\n");
             return NULL;
         }
 
+        new_vec->cords = NULL;
+        new_cord = NULL;
+        prev_copy_cord = NULL;
+
         for (j = 0; j < d; j++)
         {
-            python_cord = PyFloat_FromDouble(cur_cord->value);
-            PyList_SetItem(python_vec, j, python_cord);
-            cur_cord = cur_cord->next;
+            new_cord = malloc(sizeof(struct cord));
+            if (new_cord == NULL)
+            {
+                printf("An Error has Occurred\n");
+                return NULL;
+            }
+            PyObject *value = PyList_GetItem(row, j);
+            new_cord->value = PyFloat_AsDouble(value);
+            new_cord->next = NULL;
+            if (prev_copy_cord != NULL)
+            {
+                prev_copy_cord->next = new_cord;
+            }
+            else
+            {
+                new_vec->cords = new_cord;
+            }
+
+            prev_copy_cord = new_cord;
         }
-        PyList_SetItem(python_list, i, python_vec);
+
+        centroids[i] = *new_vec;
     }
 
-    a = K - 1;
-    for (; a >= 0; a--)
-    {
-        delete_cord_mod(final_cent[a].cords);
-    }
-    free(final_cent);
+    kmeans(K, iter, d, eps, centroids);
 
-    return python_list;
+    print_cent_mod(centroids, K, n);
+    return PyLong_FromLong(90);
+
+    // // create a python list
+    // PyObject *python_list;
+    // PyObject *python_vec;
+    // PyObject *python_cord;
+    // struct cord *cur_cord;
+    // struct vector *vec;
+
+    // python_list = PyList_New(K);
+
+    // if (python_list == NULL)
+    // {
+    //     // Error handling
+    //     delete_cord_mod(final_cent->cords);
+    //     free(final_cent);
+    //     return NULL;
+    // }
+
+    // for (i = 0; i < K; ++i)
+    // {
+    //     vec = &final_cent[i];
+    //     cur_cord = vec->cords;
+    //     python_vec = PyList_New(d);
+    //     if (python_vec == NULL)
+    //     {
+    //         // Error handling
+    //         delete_cord_mod(final_cent->cords);
+    //         free(final_cent);
+    //         Py_DECREF(python_list);
+    //         return NULL;
+    //     }
+
+    //     for (j = 0; j < d; j++)
+    //     {
+    //         python_cord = PyFloat_FromDouble(cur_cord->value);
+    //         PyList_SetItem(python_vec, j, python_cord);
+    //         cur_cord = cur_cord->next;
+    //     }
+    //     PyList_SetItem(python_list, i, python_vec);
+    // }
+
+    // a = K - 1;
+    // for (; a >= 0; a--)
+    // {
+    //     delete_cord_mod(centroids[a].cords);
+    // }
+    // free(centroids);
+
+    // return python_list;
 }
 
 static PyMethodDef capiMethods[] = {

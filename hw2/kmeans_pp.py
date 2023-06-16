@@ -38,7 +38,7 @@ def kmeans_pp(K, orginial_data):
     points = new_data.shape[0]
     center_index = np.random.choice(points)
     cent_indexes.append(center_index)
-    center = new_data.iloc[center_index].values
+    center = list(new_data.iloc[center_index].values)
     cent_arr.append(center)
     distances = [-1 for i in range(points)]
 
@@ -53,7 +53,8 @@ def kmeans_pp(K, orginial_data):
         prob = [distances[i]/sum_dist for i in range(points)] 
         new_cent_index = np.random.choice(points, p=prob)
         cent_indexes.append(new_cent_index)
-        cent_arr.append(new_data.iloc[new_cent_index].values)
+        new_cent_list = list(new_data.iloc[new_cent_index].values)
+        cent_arr.append(new_cent_list)
     print(cent_indexes)
     return cent_arr
     
@@ -90,7 +91,7 @@ def join_data(input1, input2):
 #     else:
 #         raise ValueError("An Error Has Occurred")
 def main(K, iter, eps, input_data_1, input_data_2):
-    K=K
+    num = K
     num_iter = iter
     
     data = join_data(input_data_1, input_data_2)
@@ -98,8 +99,8 @@ def main(K, iter, eps, input_data_1, input_data_2):
     list_to_c = list(points_arr)
     centroids = kmeans_pp(K, data)
     d = len(centroids[0])
+    mykmeanssp.fit(num, num_iter, d, eps, centroids,list_to_c);
     
-    final_cent = mykmeanssp.fit(K, num_iter, d, centroids, points_arr)
-    print(final_cent)
         
-print(main(3,  333, 0, "input_1_db_1.txt", "input_1_db_2.txt" ))
+
+main(3,  333, 0, "input_1_db_1.txt", "input_1_db_2.txt" )
