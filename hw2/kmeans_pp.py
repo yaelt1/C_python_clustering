@@ -99,7 +99,7 @@ def main(K, iter, eps, input_data_1, input_data_2):
     list_to_c = list(points_arr)
     centroids = kmeans_pp(K, data)
     d = len(centroids[0])
-    mykmeanssp.fit(num, num_iter, d, eps, centroids,list_to_c);
+    mykmeanssp.fit(num, num_iter, d, eps, centroids,list_to_c)
     
         
 

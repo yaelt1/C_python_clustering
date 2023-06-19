@@ -93,7 +93,8 @@ static PyObject *fit(PyObject *self, PyObject *args)
         PyObject *row = PyList_GetItem(py_cent_obj, i);
         if (!PyList_Check(row))
         {
-            // Handle error: the item is not a list
+            printf("An Error has Occurred\n");
+            return NULL;
         }
         new_vec = malloc(sizeof(struct vector));
         if (new_vec == NULL)
